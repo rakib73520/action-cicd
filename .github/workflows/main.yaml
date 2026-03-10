@@ -1,4 +1,4 @@
-name: CI/CD for Flask App (Without Docker Compose)
+name: CI/CD for Flask App (With Docker Compose)
 
 on:
   push:
@@ -39,44 +39,21 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
 
-            # Set up Docker network (if needed)
-            docker network create app_network || true
-
-            # Stop and remove existing MySQL and Flask containers if they exist
-            docker stop mysql-db || true
-            docker rm mysql-db || true
-            docker stop flask-app || true
-            docker rm flask-app || true
-
-            # Run MySQL container
-            docker run -d \
-              --name mysql-db \
-              --network app_network \
-              -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-              -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
-              -p ${{ secrets.MYSQL_PORT }}:${{ secrets.MYSQL_PORT }} \
-              mysql:latest
-
-            # Wait for MySQL to fully start
-            echo "Waiting for MySQL to initialize..."
-            sleep 30
-
-            # Create database (this is optional if you want to ensure it exists)
-            docker exec mysql-db mysql -uroot -prootpassword -e "CREATE DATABASE IF NOT EXISTS attendance_db;"
-
             # Pull latest Flask app
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
             docker pull ${{ secrets.DOCKER_USERNAME }}/flask-attendance-app
 
-            # Run Flask app container
-            docker run -d \
-              --name flask-app \
-              --network app_network \
-              -p ${{ secrets.FLASK_APP_PORT }}:${{ secrets.FLASK_APP_PORT }} \
-              -e DB_HOST=${{ secrets.DB_HOST }} \
-              -e DB_USER=${{ secrets.DB_USER }} \
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-              -e DB_NAME=${{ secrets.DB_NAME }} \
-              ${{ secrets.DOCKER_USERNAME }}/flask-attendance-app
+            docker compose down
+
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+            MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+            MYSQL_PORT=${{ secrets.MYSQL_PORT }} \
+            DB_HOST=${{ secrets.DB_HOST }} \
+            DB_USER=${{ secrets.DB_USER }} \
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            DB_NAME=${{ secrets.DB_NAME }} \
+            FLASK_APP_PORT=${{ secrets.FLASK_APP_PORT }} \
+            DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }} \
+            docker compose up -d
 
           EOF

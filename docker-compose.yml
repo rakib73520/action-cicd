@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+
+  mysql-db:
+    image: mysql:latest
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "${MYSQL_PORT}:${MYSQL_PORT}"
+    networks:
+      - app_network
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  flask-app:
+    image: ${DOCKER_USERNAME}/flask-attendance-app
+    container_name: flask-app
+    restart: always
+    depends_on:
+      - mysql-db
+    ports:
+      - "${FLASK_APP_PORT}:${FLASK_APP_PORT}"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    networks:
+      - app_network
+
+networks:
+  app_network:
+
+volumes:
+  mysql-data:
